@@ -2,11 +2,21 @@ import triton
 import triton.language as tl
 import torch
 
+
 @triton.jit
-def layernorm_kernel(x_ptr, gamma_ptr, beta_ptr, out_ptr,
-                     stride_b, stride_n, stride_h,
-                     N, H, eps,
-                     BLOCK_SIZE: tl.constexpr):
+def layernorm_kernel(
+    x_ptr,
+    gamma_ptr,
+    beta_ptr,
+    out_ptr,
+    stride_b,
+    stride_n,
+    stride_h,
+    N,
+    H,
+    eps,
+    BLOCK_SIZE: tl.constexpr,
+):
     """Layer normalization kernel."""
     pid_batch = tl.program_id(0)
     pid_n = tl.program_id(1)
@@ -23,6 +33,7 @@ def layernorm_kernel(x_ptr, gamma_ptr, beta_ptr, out_ptr,
     y = x_centered * rstd * gamma + beta
     tl.store(out_ptr + x_offset + h_offsets * stride_h, y, mask=mask)
 
+
 def triton_layernorm(x, gamma, beta, eps=1e-5):
     """Layer normalization using Triton."""
     B, N, H = x.shape
@@ -30,8 +41,17 @@ def triton_layernorm(x, gamma, beta, eps=1e-5):
     stride_b, stride_n, stride_h = x.stride()
     BLOCK_SIZE = min(triton.next_power_of_2(H), 1024)
     grid = (B, N)
-    layernorm_kernel[grid](x, gamma, beta, output,
-                           stride_b, stride_n, stride_h,
-                           N, H, eps,
-                           BLOCK_SIZE=BLOCK_SIZE)
-    return output 
+    layernorm_kernel[grid](
+        x,
+        gamma,
+        beta,
+        output,
+        stride_b,
+        stride_n,
+        stride_h,
+        N,
+        H,
+        eps,
+        BLOCK_SIZE=BLOCK_SIZE,
+    )
+    return output

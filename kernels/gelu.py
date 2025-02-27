@@ -2,6 +2,7 @@ import triton
 import triton.language as tl
 import torch
 
+
 @triton.jit
 def gelu_kernel(x_ptr, out_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
     """GELU activation kernel."""
@@ -14,11 +15,14 @@ def gelu_kernel(x_ptr, out_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
     result = x * sigmoid
     tl.store(out_ptr + offsets, result, mask=mask)
 
+
 def triton_gelu(x):
     """GELU activation using Triton."""
     n_elements = x.numel()
     output = torch.empty_like(x)
     BLOCK_SIZE = min(triton.next_power_of_2(n_elements), 1024)
     grid = (triton.cdiv(n_elements, BLOCK_SIZE),)
-    gelu_kernel[grid](x.reshape(-1), output.reshape(-1), n_elements, BLOCK_SIZE=BLOCK_SIZE)
+    gelu_kernel[grid](
+        x.reshape(-1), output.reshape(-1), n_elements, BLOCK_SIZE=BLOCK_SIZE
+    )
     return output

@@ -2,11 +2,11 @@ import triton
 import triton.language as tl
 import torch
 
+
 @triton.jit
-def softmax_kernel(x_ptr, out_ptr,
-                   stride_b, stride_h, stride_s,
-                   B, H, S,
-                   BLOCK_SIZE: tl.constexpr):
+def softmax_kernel(
+    x_ptr, out_ptr, stride_b, stride_h, stride_s, B, H, S, BLOCK_SIZE: tl.constexpr
+):
     """Softmax kernel for attention scores."""
     pid_batch = tl.program_id(0)
     pid_head = tl.program_id(1)
@@ -20,6 +20,7 @@ def softmax_kernel(x_ptr, out_ptr,
     x_sum = tl.sum(x_exp, axis=0)
     result = x_exp / x_sum
     tl.store(out_ptr + offset + s_offsets, result, mask=mask)
+
 
 def triton_softmax(x, dim=-1):
     """Softmax function using Triton."""
@@ -57,10 +58,12 @@ def triton_softmax(x, dim=-1):
         stride_b, stride_h, stride_s = x.stride()
     BLOCK_SIZE = min(triton.next_power_of_2(S), 1024)
     grid = (B, H, 1)
-    softmax_kernel[grid](x, output, stride_b, stride_h, stride_s, B, H, S, BLOCK_SIZE=BLOCK_SIZE)
+    softmax_kernel[grid](
+        x, output, stride_b, stride_h, stride_s, B, H, S, BLOCK_SIZE=BLOCK_SIZE
+    )
     if dim != x.dim() - 1:
         inv_perm = [0] * len(perm)
         for i, p in enumerate(perm):
             inv_perm[p] = i
         output = output.permute(*inv_perm).contiguous()
-    return output 
+    return output
